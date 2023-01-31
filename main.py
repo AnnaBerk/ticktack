@@ -4,13 +4,14 @@ from itertools import cycle
 
 
 class Player:
-    def __init__(self, turn):
+    def __init__(self, turn, opponent_turn):
         self.turn = turn  # X or O
         self.status = ''  # User or AI
+        self.opponent_turn = opponent_turn
 
 
-first_player = Player('X')
-second_player = Player('O')
+first_player = Player('X', 'O')
+second_player = Player('O', 'X')
 
 DEFAULT_PLAYERS = (
     first_player,
@@ -34,19 +35,40 @@ class Ticktacktoe:
     def update_status(self):
         xcount = self.board.count('X')
         ocount = self.board.count('O')
-        win = lambda xo: xo * len(
-            [rule for rule in self.WIN_RULES if (lambda b: b[rule[0]] == b[rule[1]] == b[rule[2]] == xo)(self.board)])
+        win = lambda xo: xo * len([rule for rule in self.WIN_RULES if (lambda b: b[rule[0]] == b[rule[1]] == b[rule[2]] == xo)(self.board)])
         xo_wins = win('X') + win('O')
         self.game_status = ('Draw' if xcount + ocount == len(self.board) else 'Game not finished') if len(
             xo_wins) == 0 else str(xo_wins) + ' wins'
         return self.game_status
 
-    def handle_ai_move(self, player):
+    def handle_easy_ai(self, player):
         cell = random.randint(0, 8)
         while self.check_if_occupied(cell):
             cell = random.randint(0, 8)
         self.board[cell] = player.turn
         print('Making move level "easy"')
+        self.show_board()
+
+    def one_step_to_win(self, turn):
+        ai_positions = [i for i, j in enumerate(self.board) if j == turn]
+        free_cells = [i for i, j in enumerate(self.board) if j == " "]
+        cells = [set(rule) - set(ai_positions) for rule in self.WIN_RULES]
+        cell = list(group for group in cells if len(group) == 1 and group.intersection(free_cells))
+        if cell:
+            return cell.pop().pop()
+        return False
+
+    def handle_medium_ai(self, player):
+        if self.one_step_to_win(player.turn):
+            self.board[self.one_step_to_win(player.turn)] = player.turn
+        elif self.one_step_to_win(player.opponent_turn):
+            self.board[self.one_step_to_win(player.opponent_turn)] = player.turn
+        else:
+            cell = random.randint(0, 8)
+            while self.check_if_occupied(cell):
+                cell = random.randint(0, 8)
+            self.board[cell] = player.turn
+        print('Making move level "medium"')
         self.show_board()
 
     def handle_user_move(self, player):
@@ -59,8 +81,11 @@ class Ticktacktoe:
     def handle_player_status(self, player):
         """Check if player user or ai"""
         if self.current_player.status == 'easy':
-            return self.handle_ai_move(player)
+            return self.handle_easy_ai(player)
+        elif self.current_player.status == 'medium':
+            return self.handle_medium_ai(player)
         return self.handle_user_move(player)
+    #попробовать сделать словарь
 
     def check_if_occupied(self, cell):
         while self.board[cell] != ' ':
