@@ -4,13 +4,14 @@ from itertools import cycle
 
 
 class Player:
-    def __init__(self, turn):
+    def __init__(self, turn, opponent_turn):
         self.turn = turn  # X or O
         self.status = ''  # User or AI
+        self.opponent_turn = opponent_turn
 
 
-first_player = Player('X')
-second_player = Player('O')
+first_player = Player('X', 'O')
+second_player = Player('O', 'X')
 
 DEFAULT_PLAYERS = (
     first_player,
@@ -28,20 +29,22 @@ class Ticktacktoe:
         self.current_player = next(self._players)
         self.game_status = 'Game not finished'
 
-    def show_board(self):
+    def show_board(self) -> None:
+        """Print game board."""
         print(9 * '-' + (3 * '\n| {} {} {} |').format(*self.board) + '\n' + 9 * '-')
 
-    def update_status(self):
+    def update_status(self) -> str:
+        """Check if game is ended and return status."""
         xcount = self.board.count('X')
         ocount = self.board.count('O')
-        win = lambda xo: xo * len(
-            [rule for rule in self.WIN_RULES if (lambda b: b[rule[0]] == b[rule[1]] == b[rule[2]] == xo)(self.board)])
+        win = lambda xo: xo * len([rule for rule in self.WIN_RULES if (lambda b: b[rule[0]] == b[rule[1]] == b[rule[2]] == xo)(self.board)])
         xo_wins = win('X') + win('O')
         self.game_status = ('Draw' if xcount + ocount == len(self.board) else 'Game not finished') if len(
             xo_wins) == 0 else str(xo_wins) + ' wins'
         return self.game_status
 
-    def handle_ai_move(self, player):
+    def handle_easy_ai(self, player: Player) -> None:
+        """Make random move."""
         cell = random.randint(0, 8)
         while self.check_if_occupied(cell):
             cell = random.randint(0, 8)
@@ -49,35 +52,71 @@ class Ticktacktoe:
         print('Making move level "easy"')
         self.show_board()
 
-    def handle_user_move(self, player):
+    def calculate_free_cells(self) -> list:
+        """Possible free moves."""
+        return [i for i, j in enumerate(self.board) if j == " "]
+
+    def one_step_to_win(self, turn: str) -> int | bool:
+        """Check if possible to win with one step."""
+        ai_positions = [i for i, j in enumerate(self.board) if j == turn]
+        cells = [set(rule) - set(ai_positions) for rule in self.WIN_RULES]
+        cell = list(group for group in cells if len(group) == 1 and group.intersection(self.calculate_free_cells()))
+        if cell:
+            return cell.pop().pop()
+        return False
+
+    def handle_medium_ai(self, player: Player) -> None:
+        """If it already has two in a row and can win with one further move, it does so.
+            If its opponent can win with one move, it plays the move necessary to block this.
+            Otherwise, it makes a random move."""
+        if self.one_step_to_win(player.turn):
+            self.board[self.one_step_to_win(player.turn)] = player.turn
+        elif self.one_step_to_win(player.opponent_turn):
+            self.board[self.one_step_to_win(player.opponent_turn)] = player.turn
+        else:
+            cell = random.randint(0, 8)
+            while self.check_if_occupied(cell):
+                cell = random.randint(0, 8)
+            self.board[cell] = player.turn
+        print('Making move level "medium"')
+        self.show_board()
+
+    def handle_user_move(self, player: Player) -> None:
+        """Take user input and place it on board."""
         cell = self.input_move('Enter the coordinates: ')
         while self.check_if_occupied(cell):
             cell = self.input_move('This cell is occupied! Choose another one!\n')
         self.board[cell] = player.turn
         self.show_board()
 
-    def handle_player_status(self, player):
+    def handle_player_status(self, player: Player) -> callable(Player):
         """Check if player user or ai"""
         if self.current_player.status == 'easy':
-            return self.handle_ai_move(player)
-        return self.handle_user_move(player)
+            return self.handle_easy_ai(player)
+        elif self.current_player.status == 'medium':
+            return self.handle_medium_ai(player)
 
-    def check_if_occupied(self, cell):
+    def check_if_occupied(self, cell: int) -> bool:
+        """Check if cell is free."""
         while self.board[cell] != ' ':
             return True
 
-    def input_move(self, msg=''):
+    def input_move(self, msg='') -> int:
+        """Check if users move input is correct."""
         move = input(msg)
         while not re.match('[1-3] [1-3]$', move):
             move = input(('Coordinates should be from 1 to 3!' if move.replace(' ', '').isnumeric()
                           else 'You should enter numbers!') + '\n' + msg)
         return (int(move.split()[0]) - 1) * 3 + int(move.split()[1]) - 1
 
-    def toggle_player(self):
+    def toggle_player(self) -> None:
         """Return a toggled player."""
         self.current_player = next(self._players)
 
-    def input_handler(self):
+    def input_handler(self) -> None:
+        """Check users command. It can be 'exit' to quit the game.
+            or 'start' with 2 params of players: 'user' for human
+            and 'easy' and 'medium' for ai."""
         initial_input = input('Input command: ').split(' ')
         if initial_input[0] == 'exit':
             self.game_status = 'Finished'
@@ -97,7 +136,8 @@ class Ticktacktoe:
             players = (first_player, second_player)
             self._players = cycle(players)
 
-    def run(self):
+    def run(self) -> None:
+        """Main loop for the game."""
         if self.game_status == 'Finished':
             return
         while self.game_status != 'Finished':
