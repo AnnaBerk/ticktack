@@ -49,11 +49,65 @@ class Ticktacktoe:
         print('Making move level "easy"')
         self.show_board()
 
+    def calculate_free_cells(self):
+        return [i for i, j in enumerate(self.board) if j == " "]
+
+
+    def minimax(self, newBoard, player): # в качестве игрока тут self.turn
+        # check terminal state
+
+        avail_spots = self.calculate_free_cells()
+        print(self.update_status())
+        if self.update_status() == f'{player.turn} wins':
+            return {'score': 10}
+
+        elif self.update_status() == f'{player.opponent_turn} wins':
+            return {'score': -10}
+
+        elif not self.calculate_free_cells():
+            return {'score': 0}
+        moves = []
+        # вероятно надо создать новый экземпляр игрового поля
+        for i in avail_spots:
+
+            move = {'index': i}
+            newBoard[i] = player.turn
+            if player == first_player:
+                result = self.minimax(newBoard, second_player)
+                # move['score'] = result['score']
+            else:
+                result = self.minimax(newBoard, first_player)
+                # move['score'] = result['score']
+            move['score'] = result['score']
+            newBoard[i] = ' '
+            moves.append(move)
+        best_move = int
+        if player == self.current_player:
+            best_score = 10000
+            for m in moves:
+                if m['score'] < best_score:
+                    best_score = m['score']
+                    best_move = m['index']
+        else:
+            best_score = -10000
+            for m in moves:
+                if m['score'] > best_score:
+                    best_score = m['score']
+                    best_move = m['index']
+            print(moves, best_move)
+        return moves[best_move]
+
+
+
+    def handle_hard_ai(self, player):
+        cell = self.minimax(self.board, player)
+        self.board[cell] = player.turn
+
+
     def one_step_to_win(self, turn):
         ai_positions = [i for i, j in enumerate(self.board) if j == turn]
-        free_cells = [i for i, j in enumerate(self.board) if j == " "]
         cells = [set(rule) - set(ai_positions) for rule in self.WIN_RULES]
-        cell = list(group for group in cells if len(group) == 1 and group.intersection(free_cells))
+        cell = list(group for group in cells if len(group) == 1 and group.intersection(self.calculate_free_cells()))
         if cell:
             return cell.pop().pop()
         return False
@@ -71,6 +125,7 @@ class Ticktacktoe:
         print('Making move level "medium"')
         self.show_board()
 
+
     def handle_user_move(self, player):
         cell = self.input_move('Enter the coordinates: ')
         while self.check_if_occupied(cell):
@@ -84,6 +139,8 @@ class Ticktacktoe:
             return self.handle_easy_ai(player)
         elif self.current_player.status == 'medium':
             return self.handle_medium_ai(player)
+        elif self.current_player.status == 'hard':
+            return self.handle_hard_ai(player)
         return self.handle_user_move(player)
     #попробовать сделать словарь
 
