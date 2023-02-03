@@ -53,7 +53,7 @@ class Ticktacktoe:
         return [i for i, j in enumerate(self.board) if j == " "]
 
 
-    def minimax(self, newBoard, player): # в качестве игрока тут self.turn
+    def minimax(self, newBoard, player):
         # check terminal state
 
         avail_spots = self.calculate_free_cells()
@@ -67,7 +67,6 @@ class Ticktacktoe:
         elif not self.calculate_free_cells():
             return {'score': 0}
         moves = []
-        # вероятно надо создать новый экземпляр игрового поля
         for i in avail_spots:
 
             move = {'index': i}
